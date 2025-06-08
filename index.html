@@ -1,84 +1,158 @@
-<!-- File: public/index.html -->
 <!DOCTYPE html>
-<html lang="en">
+<html lang="hi">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Multiplayer OX Game</title>
+  <title>OX Multiplayer Game</title>
   <style>
     body {
-      font-family: sans-serif;
+      font-family: Arial;
+      background: linear-gradient(to bottom right, #e0eafc, #cfdef3);
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: center;
-      height: 100vh;
-      background: #f0f0f0;
+      margin: 0;
     }
-    .board {
+
+    h1 {
+      margin-top: 20px;
+    }
+
+    #nameInputArea {
+      margin-top: 30px;
+      text-align: center;
+    }
+
+    #nameInputArea input {
+      padding: 10px;
+      font-size: 16px;
+    }
+
+    #board {
       display: grid;
       grid-template-columns: repeat(3, 100px);
-      grid-gap: 10px;
+      gap: 10px;
+      margin-top: 20px;
+      display: none;
     }
+
     .cell {
       width: 100px;
       height: 100px;
-      background: #fff;
-      font-size: 2.5rem;
+      background-color: white;
       display: flex;
       align-items: center;
       justify-content: center;
+      font-size: 2em;
       cursor: pointer;
-      border-radius: 8px;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+      border-radius: 10px;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+      transition: transform 0.2s;
     }
-    .info {
+
+    .cell:hover {
+      transform: scale(1.05);
+    }
+
+    #status {
       margin-top: 20px;
-      font-size: 1.2rem;
+      font-size: 1.2em;
+    }
+
+    button {
+      margin-top: 20px;
+      padding: 10px 20px;
+      font-size: 1em;
+      cursor: pointer;
     }
   </style>
 </head>
 <body>
-  <h2>Multiplayer OX Game</h2>
-  <div class="board" id="board"></div>
-  <div class="info" id="info">Waiting for another player...</div>
-  <button onclick="socket.emit('reset')">Reset Game</button>
+  <h1>OX Multiplayer Game</h1>
+
+  <div id="nameInputArea">
+    <h2>अपना नाम डालें:</h2>
+    <input type="text" id="playerName" placeholder="अपना नाम लिखें" />
+    <button onclick="submitName()">Join Game</button>
+  </div>
+
+  <div id="board"></div>
+  <div id="status">Waiting for players...</div>
+  <button id="reset" style="display:none;">New Game</button>
+
+  <audio id="clickSound" src="https://www.soundjay.com/button/beep-07.wav" preload="auto"></audio>
 
   <script src="/socket.io/socket.io.js"></script>
   <script>
-    const boardEl = document.getElementById('board');
-    const infoEl = document.getElementById('info');
     const socket = io();
-    let playerSymbol = null;
+    const boardEl = document.getElementById("board");
+    const statusEl = document.getElementById("status");
+    const resetBtn = document.getElementById("reset");
+    const clickSound = document.getElementById("clickSound");
 
-    socket.on('player-assign', symbol => {
-      playerSymbol = symbol;
-      infoEl.textContent = `You are '${symbol.toUpperCase()}'`;
-    });
+    let player = null;
+    let playerName = "";
+    let opponentName = "";
 
-    socket.on('full', () => {
-      infoEl.textContent = "Game full. Try again later.";
-    });
+    const cells = [];
 
-    socket.on('board-update', ({ board, currentPlayer, gameOver }) => {
-      boardEl.innerHTML = '';
-      board.forEach((val, i) => {
-        const cell = document.createElement('div');
-        cell.classList.add('cell');
-        cell.textContent = val ? val.toUpperCase() : '';
-        if (!val && !gameOver && playerSymbol === currentPlayer) {
-          cell.addEventListener('click', () => socket.emit('make-move', i));
-        }
-        boardEl.appendChild(cell);
+    for (let i = 0; i < 9; i++) {
+      const cell = document.createElement("div");
+      cell.classList.add("cell");
+      cell.dataset.index = i;
+      cell.addEventListener("click", () => {
+        socket.emit("make-move", i);
+        clickSound.play();
       });
+      boardEl.appendChild(cell);
+      cells.push(cell);
+    }
 
-      if (gameOver === 'draw') {
-        infoEl.textContent = "It's a draw!";
+    resetBtn.addEventListener("click", () => {
+      socket.emit("reset");
+    });
+
+    function submitName() {
+      const nameInput = document.getElementById("playerName");
+      if (nameInput.value.trim() === "") return alert("कृपया नाम डालें");
+      playerName = nameInput.value.trim();
+      socket.emit("set-name", playerName);
+      document.getElementById("nameInputArea").style.display = "none";
+      boardEl.style.display = "grid";
+      resetBtn.style.display = "inline-block";
+    }
+
+    function updateStatus(gameOver = null, currentPlayer = null) {
+      if (gameOver === "draw") {
+        statusEl.innerText = "Game Draw!";
       } else if (gameOver) {
-        infoEl.textContent = `${gameOver.toUpperCase()} wins!`;
+        const winner = gameOver === player ? playerName : opponentName;
+        statusEl.innerText = `${winner} जीते!`;
       } else {
-        infoEl.textContent = `${currentPlayer.toUpperCase()}'s turn`;
+        const turnName = currentPlayer === player ? "आपका" : opponentName;
+        statusEl.innerText = `${turnName} टर्न है`;
       }
+    }
+
+    socket.on("player-assign", ({ symbol, opponent }) => {
+      player = symbol;
+      opponentName = opponent || "Waiting...";
+      updateStatus();
+    });
+
+    socket.on("board-update", ({ board, currentPlayer, gameOver }) => {
+      board.forEach((val, i) => {
+        cells[i].innerText = val || "";
+      });
+      updateStatus(gameOver, currentPlayer);
+    });
+
+    socket.on("opponent-name", (name) => {
+      opponentName = name;
+      updateStatus();
+    });
+
+    socket.on("full", () => {
+      statusEl.innerText = "Room full. Try again later.";
     });
   </script>
 </body>
