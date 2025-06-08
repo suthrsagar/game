@@ -2,76 +2,91 @@
 
 const express = require('express');
 const http = require('http');
-const { Server } = require('socket.io');
 const path = require('path');
-
+const { Server } = require('socket.io');
 
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
+// 👉 Static folder serve karo
 app.use(express.static(path.join(__dirname, 'public')));
 
-let players = {};
+// ✔️ Default route
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+// 🧠 Game logic
 let board = Array(9).fill(null);
 let currentPlayer = 'x';
-let gameOver = false;
+let players = {};
+let connections = 0;
 
 io.on('connection', (socket) => {
-  console.log(`User connected: ${socket.id}`);
-
-  if (Object.keys(players).length < 2) {
-    const symbol = Object.values(players).includes('x') ? 'o' : 'x';
-    players[socket.id] = symbol;
-    socket.emit('player-assign', symbol);
-    io.emit('board-update', { board, currentPlayer, gameOver });
-  } else {
+  if (connections >= 2) {
     socket.emit('full');
+    socket.disconnect();
+    return;
   }
 
-  socket.on('make-move', (index) => {
-    if (board[index] || gameOver) return;
-    if (players[socket.id] !== currentPlayer) return;
+  const playerSymbol = connections === 0 ? 'x' : 'o';
+  players[socket.id] = playerSymbol;
+  connections++;
+  socket.emit('player-assign', playerSymbol);
+  io.emit('board-update', {
+    board,
+    currentPlayer,
+    gameOver: checkGameOver(),
+  });
 
-    board[index] = currentPlayer;
-    if (checkWin(currentPlayer)) {
-      gameOver = true;
-    } else if (board.every(cell => cell)) {
-      gameOver = 'draw';
-    } else {
+  socket.on('make-move', (index) => {
+    if (board[index] === null && players[socket.id] === currentPlayer) {
+      board[index] = currentPlayer;
+      const gameOver = checkGameOver();
       currentPlayer = currentPlayer === 'x' ? 'o' : 'x';
+      io.emit('board-update', {
+        board,
+        currentPlayer,
+        gameOver,
+      });
     }
-    io.emit('board-update', { board, currentPlayer, gameOver });
   });
 
   socket.on('reset', () => {
     board = Array(9).fill(null);
     currentPlayer = 'x';
-    gameOver = false;
-    io.emit('board-update', { board, currentPlayer, gameOver });
+    io.emit('board-update', {
+      board,
+      currentPlayer,
+      gameOver: null,
+    });
   });
 
   socket.on('disconnect', () => {
-    console.log(`User disconnected: ${socket.id}`);
+    connections--;
     delete players[socket.id];
-    board = Array(9).fill(null);
-    currentPlayer = 'x';
-    gameOver = false;
-    io.emit('board-update', { board, currentPlayer, gameOver });
   });
 });
 
-function checkWin(player) {
+function checkGameOver() {
   const winPatterns = [
     [0,1,2], [3,4,5], [6,7,8],
     [0,3,6], [1,4,7], [2,5,8],
-    [0,4,8], [2,4,6]
+    [0,4,8], [2,4,6],
   ];
-  return winPatterns.some(pattern =>
-    pattern.every(i => board[i] === player)
-  );
+  for (let pattern of winPatterns) {
+    const [a,b,c] = pattern;
+    if (board[a] && board[a] === board[b] && board[b] === board[c]) {
+      return board[a]; // 'x' or 'o'
+    }
+  }
+  if (board.every(cell => cell !== null)) return 'draw';
+  return null;
 }
 
-server.listen(3000, () => {
-  console.log('Server running on http://localhost:3000');
+// 🚀 Port for Render.com or localhost
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
 });
