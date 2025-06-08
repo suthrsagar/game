@@ -1,0 +1,85 @@
+<!-- File: public/index.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Multiplayer OX Game</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      background: #f0f0f0;
+    }
+    .board {
+      display: grid;
+      grid-template-columns: repeat(3, 100px);
+      grid-gap: 10px;
+    }
+    .cell {
+      width: 100px;
+      height: 100px;
+      background: #fff;
+      font-size: 2.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      border-radius: 8px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    }
+    .info {
+      margin-top: 20px;
+      font-size: 1.2rem;
+    }
+  </style>
+</head>
+<body>
+  <h2>Multiplayer OX Game</h2>
+  <div class="board" id="board"></div>
+  <div class="info" id="info">Waiting for another player...</div>
+  <button onclick="socket.emit('reset')">Reset Game</button>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const boardEl = document.getElementById('board');
+    const infoEl = document.getElementById('info');
+    const socket = io();
+    let playerSymbol = null;
+
+    socket.on('player-assign', symbol => {
+      playerSymbol = symbol;
+      infoEl.textContent = `You are '${symbol.toUpperCase()}'`;
+    });
+
+    socket.on('full', () => {
+      infoEl.textContent = "Game full. Try again later.";
+    });
+
+    socket.on('board-update', ({ board, currentPlayer, gameOver }) => {
+      boardEl.innerHTML = '';
+      board.forEach((val, i) => {
+        const cell = document.createElement('div');
+        cell.classList.add('cell');
+        cell.textContent = val ? val.toUpperCase() : '';
+        if (!val && !gameOver && playerSymbol === currentPlayer) {
+          cell.addEventListener('click', () => socket.emit('make-move', i));
+        }
+        boardEl.appendChild(cell);
+      });
+
+      if (gameOver === 'draw') {
+        infoEl.textContent = "It's a draw!";
+      } else if (gameOver) {
+        infoEl.textContent = `${gameOver.toUpperCase()} wins!`;
+      } else {
+        infoEl.textContent = `${currentPlayer.toUpperCase()}'s turn`;
+      }
+    });
+  </script>
+</body>
+</html>
