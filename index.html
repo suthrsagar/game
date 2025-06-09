@@ -1,159 +1,425 @@
 <!DOCTYPE html>
-<html lang="hi">
+<html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>OX Multiplayer Game</title>
-  <style>
-    body {
-      font-family: Arial;
-      background: linear-gradient(to bottom right, #e0eafc, #cfdef3);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      margin: 0;
-    }
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+<title>Tic Tac Toe Online</title>
+<style>
+  /* --- Heavy CSS with animations & mobile friendly --- */
 
-    h1 {
-      margin-top: 20px;
-    }
+  * {
+    box-sizing: border-box;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  }
+  body {
+    margin: 0;
+    background: linear-gradient(135deg, #4d9f0c, #83eaf1);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    color: #222;
+    animation: bgAnim 20s linear infinite alternate;
+  }
 
-    #nameInputArea {
-      margin-top: 30px;
-      text-align: center;
-    }
+  @keyframes bgAnim {
+    0% {background-position: 0% 50%;}
+    50% {background-position: 100% 50%;}
+    100% {background-position: 0% 50%;}
+  }
 
-    #nameInputArea input {
-      padding: 10px;
-      font-size: 16px;
-    }
+  header {
+    margin: 20px 0;
+    font-size: 2.5rem;
+    font-weight: bold;
+    color: #fff;
+    text-shadow: 0 0 10px #0009;
+  }
 
+  #loginScreen, #lobbyScreen, #gameScreen, #leaderboardScreen {
+    width: 90vw;
+    max-width: 420px;
+    background: rgba(255 255 255 / 0.9);
+    border-radius: 15px;
+    padding: 20px;
+    box-shadow: 0 10px 20px rgb(0 0 0 / 0.25);
+    animation: fadeIn 0.6s ease forwards;
+  }
+
+  @keyframes fadeIn {
+    from {opacity: 0; transform: translateY(20px);}
+    to {opacity: 1; transform: translateY(0);}
+  }
+
+  input[type="text"] {
+    width: 100%;
+    padding: 15px;
+    border: 2px solid #4d9f0c;
+    border-radius: 10px;
+    font-size: 1.2rem;
+    outline: none;
+    transition: border-color 0.3s ease;
+  }
+  input[type="text"]:focus {
+    border-color: #38b000;
+    box-shadow: 0 0 8px #38b000aa;
+  }
+
+  button {
+    margin-top: 15px;
+    width: 100%;
+    padding: 15px;
+    background: #38b000;
+    color: white;
+    font-weight: bold;
+    font-size: 1.2rem;
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: background 0.3s ease;
+    box-shadow: 0 5px 15px #2c7a00cc;
+  }
+  button:hover {
+    background: #2c7a00;
+    box-shadow: 0 8px 20px #2c7a00ee;
+  }
+  button:disabled {
+    background: #999;
+    cursor: not-allowed;
+    box-shadow: none;
+  }
+
+  #playersList {
+    margin-top: 10px;
+  }
+  .player-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+    padding: 10px 15px;
+    border-radius: 10px;
+    background: #e7f5d1;
+    box-shadow: 0 2px 5px #9999;
+    animation: bounceIn 0.6s ease forwards;
+  }
+  @keyframes bounceIn {
+    0% {opacity: 0; transform: translateY(-20px);}
+    100% {opacity: 1; transform: translateY(0);}
+  }
+
+  .player-name {
+    font-weight: 600;
+  }
+  .player-wins {
+    font-size: 0.9rem;
+    color: #555;
+    margin-left: 10px;
+  }
+
+  .playBtn {
+    padding: 8px 15px;
+    background: #4d9f0c;
+    border: none;
+    border-radius: 12px;
+    color: white;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background 0.3s ease;
+  }
+  .playBtn:hover {
+    background: #38b000;
+  }
+  .playBtn:disabled {
+    background: #ccc;
+    cursor: not-allowed;
+  }
+
+  /* Game board */
+  #board {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-top: 20px;
+  }
+  .cell {
+    width: 90px;
+    height: 90px;
+    background: #d3ecca;
+    border-radius: 15px;
+    font-size: 4rem;
+    font-weight: bold;
+    color: #2a5d0d;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    user-select: none;
+    transition: background-color 0.3s ease, transform 0.2s ease;
+    box-shadow: 0 4px 10px #70ab35cc;
+  }
+  .cell:hover {
+    background-color: #a6d55e;
+    transform: scale(1.05);
+  }
+  .cell.winning {
+    background: #ffde59;
+    color: #333;
+    box-shadow: 0 0 20px 4px #ffde59cc;
+    animation: pulseYellow 1.5s infinite;
+  }
+
+  @keyframes pulseYellow {
+    0%, 100% { box-shadow: 0 0 20px 4px #ffde59cc; }
+    50% { box-shadow: 0 0 30px 6px #ffd800ff; }
+  }
+
+  #status {
+    margin-top: 20px;
+    font-size: 1.3rem;
+    font-weight: 600;
+    color: #264d00;
+    min-height: 30px;
+    text-align: center;
+  }
+
+  #exitBtn {
+    margin-top: 25px;
+    background: #b00020;
+  }
+  #exitBtn:hover {
+    background: #7a0015;
+  }
+
+  /* Leaderboard */
+  #leaderboardList {
+    margin-top: 15px;
+    max-height: 200px;
+    overflow-y: auto;
+  }
+  .leaderboard-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 15px;
+    background: #f0f8ff;
+    border-radius: 12px;
+    margin-bottom: 8px;
+    font-weight: 600;
+    box-shadow: 0 2px 6px #bbb;
+  }
+
+  /* Responsive */
+  @media (max-width: 480px) {
     #board {
-      display: grid;
-      grid-template-columns: repeat(3, 100px);
-      gap: 10px;
-      margin-top: 20px;
-      display: none;
+      gap: 5px;
     }
-
     .cell {
-      width: 100px;
-      height: 100px;
-      background-color: white;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 2em;
-      cursor: pointer;
-      border-radius: 10px;
-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
-      transition: transform 0.2s;
+      width: 70px;
+      height: 70px;
+      font-size: 3rem;
     }
-
-    .cell:hover {
-      transform: scale(1.05);
-    }
-
-    #status {
-      margin-top: 20px;
-      font-size: 1.2em;
-    }
-
     button {
-      margin-top: 20px;
-      padding: 10px 20px;
-      font-size: 1em;
-      cursor: pointer;
+      padding: 12px;
+      font-size: 1rem;
     }
-  </style>
+  }
+</style>
 </head>
 <body>
-  <h1>OX Multiplayer Game</h1>
 
-  <div id="nameInputArea">
-    <h2>अपना नाम डालें:</h2>
-    <input type="text" id="playerName" placeholder="अपना नाम लिखें" />
-    <button onclick="submitName()">Join Game</button>
-  </div>
+<header>Tic Tac Toe Online</header>
 
+<div id="loginScreen">
+  <input id="playerNameInput" type="text" placeholder="Enter your name" maxlength="12" autocomplete="off" />
+  <button id="loginBtn" disabled>Login</button>
+</div>
+
+<div id="lobbyScreen" style="display:none;">
+  <h3>Lobby</h3>
+  <div id="playersList"></div>
+  <button id="refreshLeaderboardBtn">Show Leaderboard</button>
+</div>
+
+<div id="gameScreen" style="display:none;">
+  <h3>Playing against <span id="opponentName"></span></h3>
   <div id="board"></div>
-  <div id="status">Waiting for players...</div>
-  <button id="reset" style="display:none;">New Game</button>
+  <div id="status"></div>
+  <button id="exitBtn">Exit Game</button>
+</div>
 
-  <audio id="clickSound" src="https://www.soundjay.com/button/beep-07.wav" preload="auto"></audio>
+<div id="leaderboardScreen" style="display:none;">
+  <h3>Leaderboard</h3>
+  <div id="leaderboardList"></div>
+  <button id="closeLeaderboardBtn">Close Leaderboard</button>
+</div>
 
-  <script src="/socket.io/socket.io.js"></script>
-  <script>
-    const socket = io();
-    const boardEl = document.getElementById("board");
-    const statusEl = document.getElementById("status");
-    const resetBtn = document.getElementById("reset");
-    const clickSound = document.getElementById("clickSound");
+<script src="/socket.io/socket.io.js"></script>
+<script>
+  const socket = io();
 
-    let player = null;
-    let playerName = "";
-    let opponentName = "";
+  const loginScreen = document.getElementById('loginScreen');
+  const lobbyScreen = document.getElementById('lobbyScreen');
+  const gameScreen = document.getElementById('gameScreen');
+  const leaderboardScreen = document.getElementById('leaderboardScreen');
 
-    const cells = [];
+  const playerNameInput = document.getElementById('playerNameInput');
+  const loginBtn = document.getElementById('loginBtn');
 
-    for (let i = 0; i < 9; i++) {
-      const cell = document.createElement("div");
-      cell.classList.add("cell");
-      cell.dataset.index = i;
-      cell.addEventListener("click", () => {
-        socket.emit("make-move", i);
-        clickSound.play();
-      });
-      boardEl.appendChild(cell);
-      cells.push(cell);
+  const playersList = document.getElementById('playersList');
+  const refreshLeaderboardBtn = document.getElementById('refreshLeaderboardBtn');
+
+  const opponentNameSpan = document.getElementById('opponentName');
+  const boardDiv = document.getElementById('board');
+  const statusDiv = document.getElementById('status');
+  const exitBtn = document.getElementById('exitBtn');
+
+  const leaderboardList = document.getElementById('leaderboardList');
+  const closeLeaderboardBtn = document.getElementById('closeLeaderboardBtn');
+
+  let mySymbol = '';
+  let myTurn = false;
+  let gameActive = false;
+
+  loginBtn.onclick = () => {
+    const name = playerNameInput.value.trim();
+    if (name) {
+      socket.emit('newPlayer', name);
+      loginScreen.style.display = 'none';
+      lobbyScreen.style.display = 'block';
     }
+  };
 
-    resetBtn.addEventListener("click", () => {
-      socket.emit("reset");
-    });
+  playerNameInput.oninput = () => {
+    loginBtn.disabled = playerNameInput.value.trim().length < 1;
+  };
 
-    function submitName() {
-      const nameInput = document.getElementById("playerName");
-      if (nameInput.value.trim() === "") return alert("कृपया नाम डालें");
-      playerName = nameInput.value.trim();
-      socket.emit("set-name", playerName);
-      document.getElementById("nameInputArea").style.display = "none";
-      boardEl.style.display = "grid";
-      resetBtn.style.display = "inline-block";
-    }
-
-    function updateStatus(gameOver = null, currentPlayer = null) {
-      if (gameOver === "draw") {
-        statusEl.innerText = "Game Draw!";
-      } else if (gameOver) {
-        const winner = gameOver === player ? playerName : opponentName;
-        statusEl.innerText = `${winner} जीते!`;
-      } else {
-        const turnName = currentPlayer === player ? "आपका" : opponentName;
-        statusEl.innerText = `${turnName} टर्न है`;
+  socket.on('updatePlayers', (players) => {
+    playersList.innerHTML = '';
+    players.forEach(p => {
+      if (p.id !== socket.id) {
+        const div = document.createElement('div');
+        div.classList.add('player-item');
+        div.innerHTML = `
+          <span class="player-name">${p.name}</span> 
+          <span class="player-wins">Wins: ${p.wins}</span>
+          <button class="playBtn" ${p.inGame ? 'disabled' : ''}>Play</button>
+        `;
+        const btn = div.querySelector('button');
+        btn.onclick = () => {
+          socket.emit('playGame', p.id);
+        };
+        playersList.appendChild(div);
       }
+    });
+  });
+
+  socket.on('gameStart', ({symbol, opponent}) => {
+    mySymbol = symbol;
+    gameActive = true;
+    myTurn = (mySymbol === 'X');
+    opponentNameSpan.textContent = opponent;
+    lobbyScreen.style.display = 'none';
+    gameScreen.style.display = 'block';
+    statusDiv.textContent = myTurn ? "Your Turn (You are '" + mySymbol + "')" : "Opponent's Turn";
+    setupBoard();
+  });
+
+  socket.on('yourTurn', () => {
+    myTurn = true;
+    statusDiv.textContent = "Your Turn (You are '" + mySymbol + "')";
+  });
+
+  socket.on('opponentTurn', (opponent) => {
+    myTurn = false;
+    statusDiv.textContent = opponent + "'s Turn";
+  });
+
+  socket.on('moveMade', ({index, symbol}) => {
+    const cell = document.querySelector(`.cell[data-index='${index}']`);
+    if (cell) {
+      cell.textContent = symbol;
+      cell.style.cursor = 'default';
+      cell.classList.remove('hoverable');
     }
+  });
 
-    socket.on("player-assign", ({ symbol, opponent }) => {
-      player = symbol;
-      opponentName = opponent || "Waiting...";
-      updateStatus();
-    });
-
-    socket.on("board-update", ({ board, currentPlayer, gameOver }) => {
-      board.forEach((val, i) => {
-        cells[i].innerText = val || "";
+  socket.on('gameEnd', ({winner, winningCells}) => {
+    gameActive = false;
+    if (winner === 'draw') {
+      statusDiv.textContent = "Game Draw!";
+    } else if (winner === mySymbol) {
+      statusDiv.textContent = "You Won! 🎉";
+    } else {
+      statusDiv.textContent = "You Lost! 😞";
+    }
+    // Highlight winning cells
+    if (winningCells && winningCells.length > 0) {
+      winningCells.forEach(i => {
+        const c = document.querySelector(`.cell[data-index='${i}']`);
+        if (c) c.classList.add('winning');
       });
-      updateStatus(gameOver, currentPlayer);
-    });
+    }
+  });
 
-    socket.on("opponent-name", (name) => {
-      opponentName = name;
-      updateStatus();
-    });
+  socket.on('opponentLeft', () => {
+    alert('Opponent left the game!');
+    exitGame();
+  });
 
-    socket.on("full", () => {
-      statusEl.innerText = "Room full. Try again later.";
+  exitBtn.onclick = () => {
+    exitGame();
+  };
+
+  function exitGame() {
+    socket.emit('exitGame');
+    gameActive = false;
+    myTurn = false;
+    mySymbol = '';
+    clearBoard();
+    gameScreen.style.display = 'none';
+    lobbyScreen.style.display = 'block';
+  }
+
+  function setupBoard() {
+    boardDiv.innerHTML = '';
+    for (let i=0; i<9; i++) {
+      const cell = document.createElement('div');
+      cell.classList.add('cell', 'hoverable');
+      cell.setAttribute('data-index', i);
+      cell.onclick = () => {
+        if (gameActive && myTurn && cell.textContent === '') {
+          socket.emit('makeMove', i);
+        }
+      };
+      boardDiv.appendChild(cell);
+    }
+  }
+
+  function clearBoard() {
+    boardDiv.innerHTML = '';
+  }
+
+  refreshLeaderboardBtn.onclick = () => {
+    socket.emit('requestLeaderboard');
+    lobbyScreen.style.display = 'none';
+    leaderboardScreen.style.display = 'block';
+  };
+
+  socket.on('leaderboardData', (data) => {
+    leaderboardList.innerHTML = '';
+    data.forEach(({name, wins}) => {
+      const div = document.createElement('div');
+      div.classList.add('leaderboard-item');
+      div.textContent = `${name}: ${wins} Wins`;
+      leaderboardList.appendChild(div);
     });
-  </script>
+  });
+
+  closeLeaderboardBtn.onclick = () => {
+    leaderboardScreen.style.display = 'none';
+    lobbyScreen.style.display = 'block';
+  };
+</script>
+
 </body>
 </html>
